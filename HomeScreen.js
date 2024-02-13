@@ -3,37 +3,92 @@ import { StyleSheet, Text, View, TextInput, Button, TouchableOpacity} from 'reac
 import ImageViewer from 'react-native-image-zoom-viewer';
 import React, { useState }  from 'react';
 import renderIf from './renderIf'
+import MapView, { Marker } from 'react-native-maps';
 
 const HomeScreen = ({ navigation }) => {
   const images = [
     { url: 'https://i.imgur.com/AVtkuWA.png' }, // Replace with the actual URL of your image
   ];
 
-  const onPress = () =>  setButtonPressed(true);
-  const cancelOnPress = () =>  setButtonPressed(false);
+  const onPress = () =>  submitPressed();
+  const cancelOnPress = () =>  cancelPressed();
   const [buttonPressed, setButtonPressed] = useState(false);
+  const [pickup, setPickup] = useState('');
+  const [destination, setDestination] = useState('');
+
+  function submitPressed()
+  {
+    if(pickup ? destination: null)
+    {
+      setButtonPressed(true);
+      setEditablePickup(false);
+      setEditableDestination(false);
+      alert("A safety escort vehicle is on its way.")
+      //TODO: Send pickup and destination to back-end
+    }
+  }
+
+  function cancelPressed()
+  {
+    setButtonPressed(false);
+    setEditablePickup(true);
+    setEditableDestination(true);
+  }
+
+  const [editablePickup, setEditablePickup] = useState(true);
+  const [editableDestination, setEditableDestination] = useState(true);
+
+  const center = {
+    lat: 33.418667,
+    lng: 111.932861,
+  };
 
   return (
     <View style={styles.container}>
-   
       
       <Text style={styles.welcomeText}>Request a Safety Escort</Text>
       <Text style={styles.smallText}>An automated vehicle will be sent to your location.</Text>
       <TextInput
       style={styles.input}
       placeholder="Pickup location"
+      value={pickup}
+      onChangeText={(text) => setPickup(text)}
+      editable={editablePickup}
       />
       <TextInput
         style={styles.input}
         placeholder="Destination"
+        value={destination}
+        onChangeText={(text) => setDestination(text)}
+        editable={editableDestination}
       />
-
-      <ImageViewer
-        style={{ width: 350, height: 200, paddingVertical:0 }}
-        backgroundColor="#92b695"
-        imageUrls={images}
-        renderIndicator={() => null}
-      />
+      
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          // Coordinates of ASU
+          latitude: 33.418667,
+          longitude: -111.932861,
+          latitudeDelta: 0.00922,
+          longitudeDelta: 0.00421,
+        }}
+        
+      >
+        <Marker
+          coordinate={{
+            latitude: 33.418667,
+            longitude: -111.935861,
+          }}
+          title="Pickup"
+        />
+        <Marker
+          coordinate={{
+            latitude: 33.414667,
+            longitude: -111.928861,
+          }}
+          title="Dropoff"
+        />
+      </MapView>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={onPress}>
@@ -108,6 +163,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color:"white",
     fontSize:16
+  },
+  map: {
+    width: '95%',
+    height: '40%',
   },
 });
 
