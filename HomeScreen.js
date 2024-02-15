@@ -1,9 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, Button, TouchableOpacity} from 'react-native';
-import ImageViewer from 'react-native-image-zoom-viewer';
+import { StyleSheet, Text, View, TextInput, Button, TouchableOpacity, Alert} from 'react-native';
 import React, { useState }  from 'react';
 import renderIf from './renderIf'
 import MapView, { Marker } from 'react-native-maps';
+import axios from 'axios';
+
+const API_KEY = 'AIzaSyBTmDQaUozjWgIJdxM-f-yHMAKQULSixAo';
 
 const HomeScreen = ({ navigation }) => {
   const images = [
@@ -15,16 +17,95 @@ const HomeScreen = ({ navigation }) => {
   const [buttonPressed, setButtonPressed] = useState(false);
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
+  const [pickupCoordinates, setPickupCoordinates] = useState({ latitude: 0, longitude: 0 });
+  const [destinationCoordinates, setDestinationCoordinates] = useState({ latitude: 0, longitude: 0 });
+
+
+  const validateAddress = async (address) => {
+    try {
+      const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${API_KEY}`);
+      const { results } = response.data;
+      if (results && results.length > 0) 
+      {
+        const location = results[0].geometry.location;
+        return {
+          isValid: true,
+          coordinates: {
+            latitude: location.lat,
+            longitude: location.lng
+          }};
+      } 
+      else 
+      {
+        return { isValid: false }; // Address is not valid
+      }
+    } catch (error) {
+      console.error('Error validating address:', error);
+      return { isValid: false }; // Error occurred while validating address
+    }
+  };
+
+
+  function inBounds(myAddress)
+  {
+    if(myAddress.latitude > 33.41 && myAddress.latitude < 33.432 && myAddress.longitude > -111.943 && myAddress.longitude < -111.925)
+    {
+      return true;
+    }
+    return false;
+  }
+
+    const [address, setAddress] = useState('');
+  
+    const handleValidation = async () => {
+      const isPickupValid = await validateAddress(pickup);
+      const isDestinationValid = await validateAddress(destination);
+      if (isPickupValid.isValid && isDestinationValid.isValid) {
+        if(inBounds(isPickupValid.coordinates) && inBounds(isDestinationValid.coordinates))
+        {
+          Alert.alert('Request Submitted', 'A safety escort vehicle is on its way.');
+          setButtonPressed(true);
+          setEditablePickup(false);
+          setEditableDestination(false);
+          setPickupCoordinates(isPickupValid.coordinates);
+          setDestinationCoordinates(isDestinationValid.coordinates);
+          //TODO: Send pickup and destination to back-end
+        }
+        else if(inBounds(isDestinationValid.coordinates))
+        {
+          Alert.alert('Out of bounds', 'The provided pickup address is not within our service area.')
+        }
+        else if(inBounds(isPickupValid.coordinates))
+        {
+          Alert.alert('Out of bounds', 'The provided destination address is not within our service area.')
+        }
+        else
+        {
+          Alert.alert('Out of bounds', 'The provided pickup and destination addresses are not within our service area.')
+        }
+      } else if (isDestinationValid.isValid) {
+        Alert.alert('Invalid Address', 'The pickup address is not valid.');
+        return false;
+      }
+      else if (isPickupValid.isValid) {
+        Alert.alert('Invalid Address', 'The destination address is not valid.');
+        return false;
+      }
+      else {
+        Alert.alert('Invalid Address', 'The pickup and destination addresses are not valid.');
+        return false;
+      }
+      
+    };
 
   function submitPressed()
   {
     if(pickup ? destination: null)
     {
-      setButtonPressed(true);
-      setEditablePickup(false);
-      setEditableDestination(false);
-      alert("A safety escort vehicle is on its way.")
-      //TODO: Send pickup and destination to back-end
+      handleValidation()
+    }
+    else {
+      Alert.alert('Missing Addresses', 'Please provide both pickup and destination addresses.');
     }
   }
 
@@ -69,24 +150,18 @@ const HomeScreen = ({ navigation }) => {
           // Coordinates of ASU
           latitude: 33.418667,
           longitude: -111.932861,
-          latitudeDelta: 0.00922,
-          longitudeDelta: 0.00421,
+          latitudeDelta: 0.01922,
+          longitudeDelta: 0.01421,
         }}
         
       >
         <Marker
-          coordinate={{
-            latitude: 33.418667,
-            longitude: -111.935861,
-          }}
+          coordinate={pickupCoordinates}
           title="Pickup"
         />
         <Marker
-          coordinate={{
-            latitude: 33.414667,
-            longitude: -111.928861,
-          }}
-          title="Dropoff"
+          coordinate={destinationCoordinates}
+          title="Destination"
         />
       </MapView>
 
