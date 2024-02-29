@@ -5,7 +5,7 @@ import renderIf from './renderIf'
 import MapView, { Marker } from 'react-native-maps';
 import axios from 'axios';
 
-const API_KEY = 'AIzaSyBTmDQaUozjWgIJdxM-f-yHMAKQULSixAo';
+const API_KEY = 'insert_key_here';
 
 const HomeScreen = ({ navigation }) => {
   const images = [
