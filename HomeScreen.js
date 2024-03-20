@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TextInput, Button, TouchableOpacity, Alert, FlatList, KeyboardAvoidingView} from 'react-native';
-import React, { useState }  from 'react';
+import React, { useState, useEffect }  from 'react';
 import renderIf from './renderIf'
 import MapView, { Marker } from 'react-native-maps';
 import axios from 'axios';
 
 // The key to the Google Maps API
-const API_KEY = 'insert-key-here';
+const API_KEY = 'AIzaSyBTmDQaUozjWgIJdxM-f-yHMAKQULSixAo';
 
 const HomeScreen = ({ navigation }) => {
 
@@ -25,6 +25,7 @@ clickFlag = 0;
   const [destinationCoordinates, setDestinationCoordinates] = useState({ latitude: 0, longitude: 0 });
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
+  const [routeDuration, setRouteDuration] = useState(null);
 
   // When the pickup location is changed, generate the list of suggested auto-fill options
   const handlePickupChange = (text) => {
@@ -189,16 +190,19 @@ clickFlag = 0;
 
   async function handleMapPress(event){
     const { coordinate } = event.nativeEvent;
-    if(clickFlag == 0)
+    if(editablePickup)
     {
-      setPickupCoordinates(coordinate);
-      const address = await fetchNearestAddress(coordinate);
-      setPickup(address);
-    }
-    else
-    {
-      setDestinationCoordinates(coordinate);
-      setDestination(await fetchNearestAddress(coordinate));
+      if(clickFlag == 0)
+      {
+        setPickupCoordinates(coordinate);
+        const address = await fetchNearestAddress(coordinate);
+        setPickup(address);
+      }
+      else
+      {
+        setDestinationCoordinates(coordinate);
+        setDestination(await fetchNearestAddress(coordinate));
+      }
     }
     
   };
@@ -214,6 +218,35 @@ clickFlag = 0;
     }
     
   };
+
+  useEffect(() => {
+    getRouteDuration();
+  }, []); // Only call on component mount
+
+  async function getRouteDuration()
+  {
+    try {
+      // Call a routing service to get route information
+      const routeResponse = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${pickupCoordinates.latitude},${pickupCoordinates.longitude}&destination=${destinationCoordinates.latitude},${destinationCoordinates.longitude}&key=${API_KEY}`);
+      const routeResult = await routeResponse.json();
+      
+
+      // Extract duration in minutes from the route response
+      const durationInMinutes = routeResult.routes[0].legs[0].duration.text;
+      setRouteDuration(durationInMinutes);
+    } catch (error) {
+      console.error('Error fetching route duration:', error);
+    }
+  }
+
+  function getArrivalTime()
+  {
+    getRouteDuration();
+    if (!routeDuration) return ''; // Return empty string if route duration is not available yet
+    const routeDurationInMinutes = parseInt(routeDuration.split(' ')[0]); // Extracting minutes from duration text
+    const arrivalTime = new Date(new Date().getTime() + routeDurationInMinutes * 60000).toLocaleTimeString();
+    return arrivalTime;
+  }
 
   const [editablePickup, setEditablePickup] = useState(true);
   const [editableDestination, setEditableDestination] = useState(true);
@@ -303,7 +336,7 @@ clickFlag = 0;
         </TouchableOpacity>
         </View>
         {renderIf(buttonPressed)(
-        <Text style={[styles.buttonText, {color:"black"}]}>Estimated time of arrival: {(new Date()).toLocaleTimeString()}</Text>
+        <Text style={[styles.buttonText, {color:"black"}]}>Estimated time of arrival: {getArrivalTime()}</Text>
         )}
         {renderIf(!buttonPressed)(
         <Text style={[styles.buttonText, {color:"black"}]}></Text>
