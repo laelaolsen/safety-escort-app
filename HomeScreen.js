@@ -131,7 +131,11 @@ clickFlag = 0;
       const isPickupValid = await validateAddress(pickup);
       const isDestinationValid = await validateAddress(destination);
       if (isPickupValid.isValid && isDestinationValid.isValid) {
-        if(inBounds(isPickupValid.coordinates) && inBounds(isDestinationValid.coordinates))
+        if(Math.abs(isPickupValid.coordinates["latitude"] - isDestinationValid.coordinates["latitude"]) < .0001 && Math.abs(isPickupValid.coordinates["longitude"] - isDestinationValid.coordinates["longitude"]) < .0001)
+        {
+          Alert.alert('Invalid Address', 'The destination address cannot be the same as the pickup address.')
+        }
+        else if(inBounds(isPickupValid.coordinates) && inBounds(isDestinationValid.coordinates))
         {
           Alert.alert('Request Submitted', 'A safety escort vehicle is on its way.');
           setButtonPressed(true);
@@ -219,10 +223,6 @@ clickFlag = 0;
     
   };
 
-  useEffect(() => {
-    getRouteDuration();
-  }, []); // Only call on component mount
-
   async function getRouteDuration()
   {
     try {
@@ -232,7 +232,11 @@ clickFlag = 0;
       
 
       // Extract duration in minutes from the route response
-      const durationInMinutes = routeResult.routes[0].legs[0].duration.text;
+      var durationInMinutes = 0;
+      if(routeResult.routes[0])
+      {
+        durationInMinutes = routeResult.routes[0].legs[0].duration.text;
+      }
       setRouteDuration(durationInMinutes);
     } catch (error) {
       console.error('Error fetching route duration:', error);
@@ -241,6 +245,10 @@ clickFlag = 0;
 
   function getArrivalTime()
   {
+    if(!pickup || !destination)
+    {
+      return "N/A";
+    }
     getRouteDuration();
     if (!routeDuration) return ''; // Return empty string if route duration is not available yet
     const routeDurationInMinutes = parseInt(routeDuration.split(' ')[0]); // Extracting minutes from duration text
@@ -323,7 +331,7 @@ clickFlag = 0;
       </MapView>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={onPress}>
+        <TouchableOpacity onPress={buttonPressed ? undefined : onPress}>
           <View style={[styles.button, {backgroundColor: buttonPressed ? '#707070' : '#496448' }]}>
             <Text style={styles.buttonText}>SUBMIT REQUEST</Text>
           </View>
